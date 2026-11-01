@@ -1,0 +1,79 @@
+name: Governance remediation plan
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+  id-token: write
+concurrency:
+  group: remediation-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: vars.AWS_REMEDIATION_ENABLED == 'true' && startsWith(github.event.pull_request.head.ref, 'governance/') && github.event.pull_request.head.repo.full_name == github.repository
+    name: Validate and save governed plan
+    runs-on: ubuntu-latest
+    environment: remediation-plan
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: app/functions
+      CENTRAL_ACCOUNT_ID: ${{ vars.CENTRAL_ACCOUNT_ID }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      REMEDIATION_VALIDATE_FUNCTION: ${{ vars.REMEDIATION_VALIDATE_FUNCTION }}
+    steps:
+      # Trusted base only. PR Terraform/code is never checked out or executed.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - id: identity
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf 'request_id=%s\nhead_sha=%s\n' "${HEAD_REF#governance/}" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+      - run: python ci/terraform_remediation.py plan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remediation-plan-${{ steps.identity.outputs.request_id }}-${{ steps.identity.outputs.head_sha }}
+          path: build/remediation
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: remediation-plan-failure-${{ github.run_id }}
+          path: build/remediation/*-error.txt
+          retention-days: 1
+          if-no-files-found: ignore
+      - name: Publish plan check on the exact PR head
+        if: always()
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CONCLUSION: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/check-runs" -f name='Terraform remediation plan' -f head_sha="$HEAD_SHA" -f status=completed -f conclusion="$CONCLUSION"
+      - name: Optional dev and staging auto-merge
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GOV_AUTOMERGE_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -n "$GH_TOKEN" ] && python -c 'import json; m=json.load(open("build/remediation/metadata.json")); assert m["requires_approval"] is False'; then
+            gh pr merge "$PR_NUMBER" --auto --squash
+          fi

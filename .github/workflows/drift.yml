@@ -1,0 +1,56 @@
+name: Nightly Terraform drift
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+concurrency:
+  group: portal-release
+  cancel-in-progress: false
+jobs:
+  drift:
+    if: vars.AWS_DEPLOYMENT_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: central-plan
+    env:
+      STAGE: central
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+      TFVARS_PROFILE: central
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Read the currently deployed artifact
+        run: |
+          mkdir -p build
+          terraform -chdir=infra/stacks/portal init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=portal/$STAGE.tfstate" -backend-config="region=$AWS_REGION"
+          terraform -chdir=infra/stacks/portal show -json > build/current-state.json
+          python - <<'PY'
+          import json, os
+          state=json.load(open('build/current-state.json'))
+          runtime=next(m for m in state['values']['root_module']['child_modules'] if m['address']=='module.runtime')
+          api=next(r['values'] for r in runtime['resources'] if r['type']=='aws_lambda_function' and r['index']=='api')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('ARTIFACT_VERSION='+api['s3_key'].split('/')[0]+'\nARTIFACT_HASH='+api['source_code_hash']+'\n')
+          PY
+          rm build/current-state.json
+      - run: python ci/drift.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drift-central
+          path: build/drift.txt
+          retention-days: 3

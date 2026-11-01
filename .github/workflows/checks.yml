@@ -1,0 +1,92 @@
+name: Pull request checks
+on:
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - run: pip install -r requirements.txt pytest ruff
+      - run: ruff check app/functions tests ci
+      - run: PYTHONPATH=app/functions python ci/validate_rules.py
+      - run: pytest -q
+      - run: npm ci && npm test && npm run build
+        working-directory: app/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: app/frontend
+      - run: npm run test:e2e
+        working-directory: app/frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-results
+          path: app/frontend/test-results
+          retention-days: 3
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - run: terraform fmt -check -recursive infra
+      - run: |
+          for stack in portal org-bootstrap foundation; do
+            terraform -chdir="infra/stacks/$stack" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="infra/stacks/$stack" validate
+          done
+          for stack in portal org-bootstrap foundation; do
+            terraform -chdir="infra/stacks/$stack" test
+          done
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.58.1
+      - run: tflint --init && tflint --recursive --config="$GITHUB_WORKSPACE/.tflint.hcl"
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          config_file: .checkov.yml
+  central-plan:
+    if: vars.AWS_DEPLOYMENT_ENABLED == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: central-plan
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Plan the currently deployed artifact with proposed infrastructure
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+          TFVARS_PROFILE: central
+        run: |
+          mkdir -p build
+          terraform -chdir=infra/stacks/portal init -input=false -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=portal/central.tfstate" -backend-config="region=$AWS_REGION"
+          terraform -chdir=infra/stacks/portal show -json > build/state.json
+          export TF_VAR_artifact_version=$(jq -er '.values.root_module.child_modules[] | select(.address=="module.runtime") | .resources[] | select(.type=="aws_lambda_function" and .index=="api") | .values.s3_key | split("/")[0]' build/state.json)
+          export TF_VAR_artifact_hash=$(jq -er '.values.root_module.child_modules[] | select(.address=="module.runtime") | .resources[] | select(.type=="aws_lambda_function" and .index=="api") | .values.source_code_hash' build/state.json)
+          terraform -chdir=infra/stacks/portal plan -input=false -no-color -var-file="../../envs/$TFVARS_PROFILE.tfvars" -var="artifact_bucket=$ARTIFACT_BUCKET" > build/plan.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pull-request-central-plan
+          path: build/plan.txt
+          retention-days: 3

@@ -1,0 +1,49 @@
+name: Deploy central governance portal
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: portal-release
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  checks:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/checks.yml
+  build:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - run: python ci/build.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: |
+            build/functions.zip
+            build/frontend.tar.gz
+            build/manifest.json
+          retention-days: 14
+          if-no-files-found: error
+  central:
+    if: vars.AWS_DEPLOYMENT_ENABLED == 'true'
+    needs: build
+    uses: ./.github/workflows/promote.yml
+    with:
+      stage: central
+    permissions:
+      contents: read
+      id-token: write
