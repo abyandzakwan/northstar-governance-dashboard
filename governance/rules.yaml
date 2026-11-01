@@ -1,0 +1,121 @@
+version: "2026.11.1"
+frameworks:
+  cis-aws:
+    name: CIS AWS Foundations
+    edition: "3.0.0"
+    scope: Technical evidence only; confirm the enabled Security Hub standard before rollout.
+  iso-27001:
+    name: ISO/IEC 27001
+    edition: "2022"
+    scope: Technical Annex A evidence only. Mapping requires ISMS approval; this is not certification.
+profiles:
+  dev: { threshold: 70, max_critical: null, baseline_grace_days: 14 }
+  testing: { threshold: 85, max_critical: null, baseline_grace_days: 7 }
+  production: { threshold: 95, max_critical: 0, baseline_grace_days: 3 }
+  unclassified: { threshold: 100, max_critical: 0, baseline_grace_days: 0 }
+rules:
+  - id: CLOUDTRAIL_ENABLED
+    title: CloudTrail enabled in every Region
+    area: Logging
+    source: securityhub
+    check: CloudTrail.1
+    severity: { dev: fail, testing: fail, production: critical }
+    frameworks: { cis-aws: ["3.1"], iso-27001: ["A.8.15"] }
+  - id: CONFIG_ENABLED
+    title: AWS Config recording enabled
+    area: Logging
+    source: securityhub
+    check: Config.1
+    severity: { dev: fail, testing: fail, production: fail }
+    frameworks: { cis-aws: ["3.5"], iso-27001: ["A.8.9"] }
+  - id: ROOT_MFA_ENABLED
+    title: Root account protected with MFA
+    area: Identity
+    source: securityhub
+    check: IAM.9
+    severity: { dev: fail, testing: fail, production: critical }
+    frameworks: { cis-aws: ["1.5"], iso-27001: ["A.8.5"] }
+  - id: ROOT_ACCESS_KEYS_DISABLED
+    title: No root access keys
+    area: Identity
+    source: securityhub
+    check: IAM.4
+    severity: { dev: fail, testing: fail, production: critical }
+    frameworks: { cis-aws: ["1.4"], iso-27001: ["A.8.2"] }
+  - id: GUARDDUTY_ENABLED
+    title: GuardDuty threat detection enabled
+    area: Detection
+    source: securityhub
+    check: GuardDuty.1
+    severity: { dev: fail, testing: fail, production: fail }
+    frameworks: { iso-27001: ["A.8.16"] }
+  - id: S3_PUBLIC_ACCESS_BLOCKED
+    title: S3 public access blocked
+    area: Storage
+    source: securityhub
+    check: S3.8
+    severity: { dev: warn, testing: fail, production: critical }
+    frameworks: { cis-aws: ["2.1.4"], iso-27001: ["A.8.3"] }
+  - id: EBS_ENCRYPTED
+    title: EBS encryption enabled
+    area: Encryption
+    source: securityhub
+    check: EC2.3
+    severity: { dev: warn, testing: fail, production: fail }
+    frameworks: { cis-aws: ["2.2.1"], iso-27001: ["A.8.24"] }
+  - id: RDS_ENCRYPTED
+    title: RDS storage encrypted
+    area: Encryption
+    source: securityhub
+    check: RDS.3
+    severity: { dev: warn, testing: fail, production: fail }
+    frameworks: { cis-aws: ["2.3.1"], iso-27001: ["A.8.24"] }
+  - id: S3_KMS_ENCRYPTED
+    title: S3 default encryption uses KMS
+    area: Encryption
+    source: custom
+    check: s3_kms_encrypted
+    severity: { dev: warn, testing: fail, production: fail }
+    frameworks: { iso-27001: ["A.8.24"] }
+  - id: IAM_KEY_ROTATION
+    title: IAM access keys rotated within 90 days
+    area: Identity
+    source: securityhub
+    check: IAM.3
+    severity: { dev: warn, testing: fail, production: critical }
+    frameworks: { cis-aws: ["1.14"], iso-27001: ["A.5.17"] }
+  - id: NO_PUBLIC_ADMIN_PORTS
+    title: No unrestricted SSH or RDP
+    area: Network
+    source: securityhub
+    check: EC2.19
+    severity: { dev: fail, testing: fail, production: critical }
+    frameworks: { cis-aws: ["5.2", "5.3"], iso-27001: ["A.8.20"] }
+  - id: BACKUP_PLAN_ATTACHED
+    title: Resources covered by an AWS Backup plan
+    area: Resilience
+    source: custom
+    check: backup_plan_attached
+    severity: { dev: n/a, testing: warn, production: fail }
+    frameworks: { iso-27001: ["A.8.13"] }
+  - id: RDS_MULTI_AZ
+    title: RDS Multi-AZ enabled
+    area: Resilience
+    source: securityhub
+    check: RDS.5
+    severity: { dev: n/a, testing: n/a, production: fail }
+    frameworks: { iso-27001: ["A.8.14"] }
+  - id: REQUIRED_TAGS
+    title: Owner, CostCenter and Service tags present
+    area: Ownership
+    source: custom
+    check: required_tags
+    severity: { dev: warn, testing: fail, production: fail }
+    frameworks: { iso-27001: ["A.5.9"] }
+  - id: BASELINE_CURRENT
+    title: Baseline StackSet within update window
+    area: Deployment
+    source: custom
+    check: baseline_current
+    severity: { dev: warn, testing: fail, production: fail }
+    frameworks: { iso-27001: ["A.8.9"] }

@@ -1,0 +1,10 @@
+{
+  "functions.zip": {
+    "sha256": "6133d0864a00a2ad8b2b704560e130b22a563d5d2614538af1ab806558177a1f",
+    "base64sha256": "YTPQhkoAoq2LK3BFYOEwsipWPV0mFFOK8auAZVgXeh8="
+  },
+  "frontend.tar.gz": {
+    "sha256": "5b73dd5892e114e341aa89e12f5afb11eb23618be9a9caea784a35a49a8fce9d",
+    "base64sha256": "W3PdWJLhFONBqonhL1r7EesjYYvpqcrqeEo1pJqPzp0="
+  }
+}
