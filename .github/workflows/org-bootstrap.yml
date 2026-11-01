@@ -1,0 +1,91 @@
+name: Organization StackSet bootstrap
+on:
+  push:
+    branches: [main]
+    paths:
+      - infra/stacks/org-bootstrap/**
+      - infra/modules/member-role/**
+      - infra/modules/event-forwarding/**
+      - .github/workflows/org-bootstrap.yml
+  workflow_dispatch:
+    inputs:
+      scope:
+        type: choice
+        options: [prod, sandbox]
+        default: prod
+        required: true
+concurrency:
+  group: organization-bootstrap
+  cancel-in-progress: false
+permissions:
+  contents: read
+  id-token: write
+env:
+  BOOTSTRAP_SCOPE: ${{ inputs.scope || 'prod' }}
+jobs:
+  plan:
+    if: vars.AWS_DEPLOYMENT_ENABLED == 'true' && vars.PORTAL_DEPLOYMENT_MODE != 'standalone' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: org-bootstrap-plan
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Save organization plan
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          ORG_PROD_CONFIG: ${{ vars.ORG_BOOTSTRAP_TFVARS_JSON }}
+          ORG_SANDBOX_CONFIG: ${{ vars.ORG_BOOTSTRAP_SANDBOX_TFVARS_JSON }}
+        run: |
+          mkdir -p build
+          if [[ "$BOOTSTRAP_SCOPE" == "sandbox" ]]; then
+            printf '%s' "$ORG_SANDBOX_CONFIG" > build/org.tfvars.json
+          else
+            printf '%s' "$ORG_PROD_CONFIG" > build/org.tfvars.json
+          fi
+          test -s build/org.tfvars.json
+          terraform -chdir=infra/stacks/org-bootstrap init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=org-bootstrap/$BOOTSTRAP_SCOPE.tfstate" -backend-config="region=$AWS_REGION"
+          terraform -chdir=infra/stacks/org-bootstrap plan -input=false -var-file="$GITHUB_WORKSPACE/build/org.tfvars.json" -out="$GITHUB_WORKSPACE/build/org.tfplan"
+          terraform -chdir=infra/stacks/org-bootstrap show -no-color "$GITHUB_WORKSPACE/build/org.tfplan" > build/org-plan.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: organization-plan-${{ env.BOOTSTRAP_SCOPE }}
+          path: |
+            build/org.tfplan
+            build/org-plan.txt
+          retention-days: 3
+  first-review:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: org-bootstrap-review
+    permissions:
+      contents: read
+    steps:
+      - run: echo 'First organization bootstrap approval recorded. A separate approver must approve the apply environment.'
+  apply:
+    needs: first-review
+    runs-on: ubuntu-latest
+    environment: org-bootstrap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: organization-plan-${{ env.BOOTSTRAP_SCOPE }}
+          path: build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          terraform -chdir=infra/stacks/org-bootstrap init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=org-bootstrap/$BOOTSTRAP_SCOPE.tfstate" -backend-config="region=$AWS_REGION"
+          terraform -chdir=infra/stacks/org-bootstrap apply -input=false "$GITHUB_WORKSPACE/build/org.tfplan"

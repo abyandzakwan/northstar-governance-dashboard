@@ -1,0 +1,72 @@
+name: Apply governed remediation
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+  id-token: write
+concurrency:
+  group: remediation-apply
+  cancel-in-progress: false
+jobs:
+  apply:
+    if: vars.AWS_REMEDIATION_ENABLED == 'true' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'governance/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: remediation-apply
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: app/functions
+      CENTRAL_ACCOUNT_ID: ${{ vars.CENTRAL_ACCOUNT_ID }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      REMEDIATION_VALIDATE_FUNCTION: ${{ vars.REMEDIATION_VALIDATE_FUNCTION }}
+      REMEDIATION_CALLBACK_FUNCTION: ${{ vars.REMEDIATION_CALLBACK_FUNCTION }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+          terraform_wrapper: false
+      - id: artifact
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          def get(path):
+              return json.loads(subprocess.check_output(['gh','api','repos/'+os.environ['GITHUB_REPOSITORY']+path]))
+          name='remediation-plan-'+os.environ['HEAD_REF'].split('/',1)[1]+'-'+os.environ['HEAD_SHA']
+          artifacts=get('/actions/artifacts?name='+name)['artifacts']
+          workflow=get('/actions/workflows/remediation-plan.yml')['id']
+          artifact=next(a for a in artifacts if not a['expired'] and get('/actions/runs/'+str(a['workflow_run']['id']))['workflow_id']==workflow)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write('run_id='+str(artifact['workflow_run']['id'])+'\nname='+name+'\n')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          run-id: ${{ steps.artifact.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build/remediation
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: python ci/terraform_remediation.py apply
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: remediation-apply-failure-${{ github.run_id }}
+          path: build/remediation/*-error.txt
+          retention-days: 1
+          if-no-files-found: ignore

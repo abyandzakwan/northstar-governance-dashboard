@@ -1,0 +1,91 @@
+name: Promote an immutable release
+on:
+  workflow_call:
+    inputs:
+      stage:
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}-plan
+    env:
+      STAGE: ${{ inputs.stage }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+      TFVARS_PROFILE: ${{ inputs.stage }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: python ci/release.py upload --stage "$STAGE"
+      - name: Save exact plan for review and apply
+        run: |
+          export TF_VAR_artifact_hash=$(jq -er '."functions.zip".base64sha256' build/manifest.json)
+          terraform -chdir=infra/stacks/portal init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=portal/$STAGE.tfstate" -backend-config="region=$AWS_REGION"
+          terraform -chdir=infra/stacks/portal plan -input=false -var-file="../../envs/$TFVARS_PROFILE.tfvars" -var="artifact_bucket=$ARTIFACT_BUCKET" -var="artifact_version=$GITHUB_SHA" -out="$GITHUB_WORKSPACE/build/$STAGE.tfplan"
+          terraform -chdir=infra/stacks/portal show -no-color "$GITHUB_WORKSPACE/build/$STAGE.tfplan" > "build/$STAGE-plan.txt"
+          printf 'Review the saved %s plan artifact before approving deployment.\n' "$STAGE" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plan-${{ inputs.stage }}-${{ github.sha }}
+          path: |
+            build/${{ inputs.stage }}.tfplan
+            build/${{ inputs.stage }}-plan.txt
+          retention-days: 3
+          if-no-files-found: error
+  apply:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}
+    env:
+      STAGE: ${{ inputs.stage }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: build
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan-${{ inputs.stage }}-${{ github.sha }}
+          path: build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Apply reviewed plan without replanning
+        run: |
+          terraform -chdir=infra/stacks/portal init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=portal/$STAGE.tfstate" -backend-config="region=$AWS_REGION"
+          terraform -chdir=infra/stacks/portal apply -input=false "$GITHUB_WORKSPACE/build/$STAGE.tfplan"
+      - run: python ci/release.py publish --stage "$STAGE"
+      - run: python ci/smoke.py --stage "$STAGE"
+      - name: Production release note
+        if: inputs.stage == 'central' && vars.RELEASE_SLACK_SECRET_ARN != ''
+        env:
+          RELEASE_SLACK_SECRET_ARN: ${{ vars.RELEASE_SLACK_SECRET_ARN }}
+        run: python ci/notify.py

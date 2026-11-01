@@ -1,0 +1,15 @@
+# Installed in the ns-infrastructure-terraform monorepo. Explicit bindings prevent arbitrary file edits.
+# Existing Terraform-owned resources must be mapped here; direct API remediation will refuse them.
+version: "1"
+workspaces: []
+# - account_id: "111111111111"
+#   region: ap-southeast-1
+#   environment: dev
+#   directory: accounts/dev/111111111111/ap-southeast-1
+#   variable_file: terraform.tfvars.json
+#   bindings:
+#     s3-bucket-versioning:
+#       resource_pattern: "arn:aws:s3:::gov-portal-pilot-*"
+#       variable_path: [bucket_versioning_enabled]
+#       desired: true
+#       resource_address: aws_s3_bucket_versioning.pilot

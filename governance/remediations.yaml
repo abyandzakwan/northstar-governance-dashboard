@@ -1,0 +1,38 @@
+version: "2.0.0"
+runbooks:
+  - id: s3-account-public-access
+    title: Block public S3 access at account level
+    controls: [S3.8]
+    rules: [S3_PUBLIC_ACCESS_BLOCKED]
+    action: s3_account_public_access
+    desired: {BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true}
+    impact: Changes the account-wide S3 public access policy; public workloads can be affected.
+  - id: s3-bucket-versioning
+    title: Enable S3 bucket versioning
+    controls: [S3.14]
+    rules: ["SECURITY_HUB::S3.14"]
+    action: s3_bucket_versioning
+    desired: {Status: Enabled}
+    impact: Future object versions are retained; existing objects are preserved.
+  - id: ebs-default-encryption
+    title: Enable default EBS encryption
+    controls: [EC2.7]
+    rules: ["SECURITY_HUB::EC2.7"]
+    action: ebs_default_encryption
+    desired: {EbsEncryptionByDefault: true}
+    impact: Affects new EBS volumes in the selected Region; existing unencrypted volumes require migration.
+manual_controls:
+  ROOT_MFA_ENABLED: Root MFA requires an account owner to enroll a physical or virtual factor.
+  ROOT_ACCESS_KEYS_DISABLED: Root credential removal requires an owner-reviewed credential rotation procedure.
+  EBS_ENCRYPTED: Existing volumes require an encrypted-copy migration and workload cutover.
+  RDS_ENCRYPTED: Existing databases require a snapshot/restore migration and workload cutover.
+  NO_PUBLIC_ADMIN_PORTS: Change the Terraform security-group configuration; do not remove shared ingress blindly.
+  RDS_MULTI_AZ: Requires a workload-specific database change plan and maintenance assessment.
+  BASELINE_CURRENT: Run the owning baseline Terraform deployment, review its plan and verify rollout.
+  CLOUDTRAIL_ENABLED: Configure the owning CloudTrail module and organization log destination.
+  CONFIG_ENABLED: Configure the owning Config recorder, delivery channel and rule modules.
+  GUARDDUTY_ENABLED: Enable the account through its organization-managed security configuration.
+  IAM_KEY_ROTATION: Rotate application credentials with their owner before retiring the old keys.
+  S3_KMS_ENCRYPTED: Configure the owning bucket module with an approved KMS key.
+  BACKUP_PLAN_ATTACHED: Configure the owning backup plan and its resource selections.
+  REQUIRED_TAGS: Update resource ownership and cost tags in the owning Terraform workspace.
