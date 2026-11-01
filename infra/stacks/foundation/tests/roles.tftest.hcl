@@ -21,3 +21,16 @@ run "central_has_distinct_remediation_oidc_identities" {
     error_message = "Central deployment needs distinct plan/apply identities and independent organization bootstrap."
   }
 }
+
+run "regional_standalone_foundation_has_distinct_names_without_org_roles" {
+  command = plan
+  variables {
+    stage                      = "central"
+    resource_suffix            = "-ap-southeast-1"
+    enable_org_bootstrap_roles = false
+  }
+  assert {
+    condition     = aws_s3_bucket.foundation["state"].bucket == "gov-portal-central-ap-southeast-1-state-333333333333" && length(aws_iam_role.org) == 0
+    error_message = "Regional migration must isolate storage and avoid duplicating global organization roles."
+  }
+}

@@ -6,7 +6,7 @@ For one account without SSO, start with [the standalone guide](standalone.md). I
 
 Use a dedicated security/tooling account. Enable trusted access for Organizations StackSets and delegate administration to this account. Configure Security Hub delegated administration, standards and aggregation; configure an AWS Config aggregator with the member/Region coverage needed by the checks. Use an authorized bootstrap operator for organization prerequisites; the application does not configure the management account or modify Control Tower-managed stacks.
 
-Copy/edit `infra/envs/central.tfvars`:
+Use the following portal inputs. Supply their JSON equivalent through the `PORTAL_TFVARS_JSON` Actions variable, as described in [the standalone guide](standalone.md#3-configure-the-deployment-workflow); ignored local tfvars files are not available on GitHub runners:
 
 ```hcl
 stage             = "central"

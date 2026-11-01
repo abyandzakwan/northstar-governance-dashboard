@@ -186,7 +186,10 @@ resource "aws_iam_role_policy" "codedeploy" {
   policy = jsonencode({
     Version = "2012-10-17", Statement = [
       {
-        Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias", "lambda:GetProvisionedConcurrencyConfig", "lambda:PutProvisionedConcurrencyConfig"], Resource = "arn:aws:lambda:${var.region}:${var.account_id}:function:${var.name}-api:*"
+        Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias", "lambda:GetProvisionedConcurrencyConfig", "lambda:PutProvisionedConcurrencyConfig"], Resource = [
+          "arn:aws:lambda:${var.region}:${var.account_id}:function:${var.name}-api",
+          "arn:aws:lambda:${var.region}:${var.account_id}:function:${var.name}-api:*"
+        ]
       },
       {
         Effect = "Allow", Action = ["cloudwatch:DescribeAlarms"], Resource = "*"

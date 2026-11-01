@@ -1,10 +1,10 @@
 {
   "functions.zip": {
-    "sha256": "6133d0864a00a2ad8b2b704560e130b22a563d5d2614538af1ab806558177a1f",
-    "base64sha256": "YTPQhkoAoq2LK3BFYOEwsipWPV0mFFOK8auAZVgXeh8="
+    "sha256": "37d9773624098e7e0cbc1e4491c524867f27c118cbe594c8c769751332f32fa4",
+    "base64sha256": "N9l3NiQJjn4MvB5EkcUkhn8nwRjL5ZTIx2l1EzLzL6Q="
   },
   "frontend.tar.gz": {
-    "sha256": "5b73dd5892e114e341aa89e12f5afb11eb23618be9a9caea784a35a49a8fce9d",
-    "base64sha256": "W3PdWJLhFONBqonhL1r7EesjYYvpqcrqeEo1pJqPzp0="
+    "sha256": "2484607fe4d5667fb8b369bf818ac7272c77b9e2899706af330b7cf8bcebda17",
+    "base64sha256": "JIRgf+TVZn+4s2m/gYrHJyx3ueKJlwavMwt8+Lzr2hc="
   }
 }

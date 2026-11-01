@@ -1,0 +1,7 @@
+stage      = "central"
+account_id = "YOUR_12_DIGIT_ACCOUNT_ID"
+region     = "ap-southeast-1"
+repository = "abyandzakwan/northstar-governance-dashboard"
+
+# Uncomment if this AWS account already has the GitHub OIDC provider.
+# existing_github_provider_arn = "arn:aws:iam::YOUR_12_DIGIT_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"

@@ -5,26 +5,13 @@ from random import Random
 from portal.domain import catalog, evaluate, summaries, timestamp, utcnow
 
 
-def seed(count=36):
+def seed(count=6):
+    """Use two services in each environment; larger counts are only for load tests."""
     rng = Random(42)
     data = {
         k: {} for k in ("accounts", "findings", "observations", "deployments", "waivers", "reports", "trends")
     }
-    teams = ["platform", "payments", "data", "experience"]
-    names = [
-        "core-platform",
-        "payment-services",
-        "data-analytics",
-        "customer-experience",
-        "booking-engine",
-        "identity-services",
-        "search-platform",
-        "notification-hub",
-        "revenue-systems",
-        "partner-connect",
-        "mobile-services",
-        "shared-infrastructure",
-    ]
+    services = [("ns-fligth", "flight"), ("ns-book", "booking")]
     from portal.securityhub import standard_id
 
     standard_arn = (
@@ -39,20 +26,22 @@ def seed(count=36):
         "synthetic": True,
     }
     data["standards"] = {standard["id"]: standard}
-    for i in range(count + 1):
-        env = ("production", "testing", "dev")[i % 3] if i < count else "unclassified"
+    for i in range(count):
+        env = ("production", "testing", "dev")[i % 3]
+        name, team = services[(i // 3) % len(services)]
+        suffix = f"-{i // 6 + 1}" if i >= 6 else ""
         aid = str(100000000001 + i)
         account = {
             "id": aid,
-            "name": names[(i // 3) % len(names)] + "-" + env,
+            "name": f"{name}-{env}{suffix}",
             "environment": env,
-            "owner_team": teams[(i // 3) % 4],
-            "ou_path": f"Root/Workloads/{env.title()}/{teams[(i // 3) % 4].title()}",
+            "owner_team": team,
+            "ou_path": f"Root/Workloads/{env.title()}/{team.title()}",
             "tags": {
                 "Environment": env,
-                "Owner": teams[i % 4],
+                "Owner": team,
                 "CostCenter": "CC-210",
-                "Service": "platform",
+                "Service": team,
             },
             "last_scanned_at": (utcnow() - timedelta(minutes=3 + i % 10)).isoformat(),
         }
@@ -60,6 +49,11 @@ def seed(count=36):
         for j, rule in enumerate(catalog()["rules"]):
             for k in range(3):
                 failed = rng.random() < (0.06 if env == "production" else 0.11 if env == "testing" else 0.17)
+                # Keep both a supported remediation and a manual control visible in the small demo.
+                if team == "flight" and k == 0 and rule["id"] in {
+                    "S3_PUBLIC_ACCESS_BLOCKED", "ROOT_MFA_ENABLED"
+                }:
+                    failed = True
                 observations.append(
                     {
                         "rule_id": rule["id"],
@@ -106,7 +100,7 @@ def seed(count=36):
         ]
     for env in ("all", "dev", "testing", "production"):
         accounts = [a for a in data["accounts"].values() if env == "all" or a["environment"] == env]
-        average = sum(a["score_pct"] for a in accounts) / len(accounts)
+        average = sum(a["score_pct"] for a in accounts) / len(accounts) if accounts else 0
         data["trends"][env] = [
             {
                 "date": (utcnow() - timedelta(days=d)).date().isoformat(),

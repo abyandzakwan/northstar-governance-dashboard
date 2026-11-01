@@ -172,6 +172,8 @@ resource "aws_cloudfront_origin_access_control" "portal" {
   signing_protocol                  = "sigv4"
 }
 
+data "aws_region" "current" {}
+
 resource "aws_cloudfront_response_headers_policy" "security" {
   name = var.name
   security_headers_config {
@@ -196,7 +198,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
     }
 
     content_security_policy {
-      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.execute-api.*.amazonaws.com https://*.amazoncognito.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.execute-api.${data.aws_region.current.name}.amazonaws.com https://*.amazoncognito.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
       override                = true
     }
   }
@@ -249,7 +251,8 @@ resource "aws_cloudfront_distribution" "portal" {
     cloudfront_default_certificate = var.domain_name == ""
     acm_certificate_arn            = var.domain_name != "" ? aws_acm_certificate_validation.portal[0].certificate_arn : null
     ssl_support_method             = var.domain_name != "" ? "sni-only" : null
-    minimum_protocol_version       = "TLSv1.2_2021"
+    # CloudFront fixes its default certificate policy at TLSv1; custom certs use TLS 1.2.
+    minimum_protocol_version = var.domain_name != "" ? "TLSv1.2_2021" : "TLSv1"
   }
 }
 

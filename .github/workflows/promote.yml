@@ -17,6 +17,7 @@ jobs:
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
       TFVARS_PROFILE: ${{ inputs.stage }}
+      PORTAL_TFVARS_JSON: ${{ vars.PORTAL_TFVARS_JSON }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,11 +36,13 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
       - run: python ci/release.py upload --stage "$STAGE"
+      - name: Load portal configuration
+        run: python ci/portal_config.py
       - name: Save exact plan for review and apply
         run: |
           export TF_VAR_artifact_hash=$(jq -er '."functions.zip".base64sha256' build/manifest.json)
           terraform -chdir=infra/stacks/portal init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=portal/$STAGE.tfstate" -backend-config="region=$AWS_REGION"
-          terraform -chdir=infra/stacks/portal plan -input=false -var-file="../../envs/$TFVARS_PROFILE.tfvars" -var="artifact_bucket=$ARTIFACT_BUCKET" -var="artifact_version=$GITHUB_SHA" -out="$GITHUB_WORKSPACE/build/$STAGE.tfplan"
+          terraform -chdir=infra/stacks/portal plan -input=false -var-file="../../envs/$TFVARS_PROFILE.tfvars.json" -var="artifact_bucket=$ARTIFACT_BUCKET" -var="artifact_version=$GITHUB_SHA" -out="$GITHUB_WORKSPACE/build/$STAGE.tfplan"
           terraform -chdir=infra/stacks/portal show -no-color "$GITHUB_WORKSPACE/build/$STAGE.tfplan" > "build/$STAGE-plan.txt"
           printf 'Review the saved %s plan artifact before approving deployment.\n' "$STAGE" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
@@ -84,6 +87,16 @@ jobs:
           terraform -chdir=infra/stacks/portal apply -input=false "$GITHUB_WORKSPACE/build/$STAGE.tfplan"
       - run: python ci/release.py publish --stage "$STAGE"
       - run: python ci/smoke.py --stage "$STAGE"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - run: npm ci
+        working-directory: app/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: app/frontend
+      - run: node ci/browser_smoke.mjs
       - name: Production release note
         if: inputs.stage == 'central' && vars.RELEASE_SLACK_SECRET_ARN != ''
         env:

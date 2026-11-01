@@ -74,6 +74,7 @@ type Session = {
   teams: string[];
   mode: string;
   deployment_mode?: string;
+  sample_securityhub?: boolean;
 };
 type DeploymentPage = {
   items: Deployment[];
@@ -787,7 +788,11 @@ function App() {
             <span className="top-divider" />
             <span className="connection">
               <span className="live-dot" />
-              {session.mode === "demo" ? "Demo data" : "AWS connected"}
+              {session.mode === "demo"
+                ? "Demo data"
+                : session.sample_securityhub
+                  ? "AWS + sample findings"
+                  : "AWS connected"}
             </span>
           </div>
         </header>
@@ -844,6 +849,17 @@ function App() {
                 modified.
               </span>
               <Badge tone="blue">Preview</Badge>
+            </div>
+          )}
+          {session.sample_securityhub && (
+            <div className="demo-banner" role="status">
+              <ShieldAlert size={14} />
+              <span>
+                <strong>Sample Security Hub data</strong> · Labelled sample
+                findings appear when live evidence is unavailable. Scores may
+                include sample data. Live remediation is disabled.
+              </span>
+              <Badge tone="amber">Test deployment</Badge>
             </div>
           )}
           {error && (
@@ -1971,6 +1987,7 @@ function App() {
                   <div className="finding" key={i}>
                     <div>
                       <Status status={f.status} />
+                      {f.sample_data && <Badge tone="amber">Sample</Badge>}
                       <span
                         className={
                           f.severity === "critical" ? "red-text" : "muted"
@@ -1983,7 +2000,7 @@ function App() {
                     <code>{f.resource}</code>
                     {f.detail && <p>{f.detail}</p>}
                     <div className="finding-actions">
-                      {["FAIL", "WARN"].includes(f.status) &&
+                      {!f.sample_data && ["FAIL", "WARN"].includes(f.status) &&
                         (session.admin ||
                           session.teams.includes(selected.owner_team)) && (
                           <button

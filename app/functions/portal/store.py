@@ -111,7 +111,7 @@ class DynamoStore:
             old = self._pages(
                 "query", KeyConditionExpression=Key("PK").eq(f"ACCOUNT#{key}") & Key("SK").begins_with(prefix)
             )
-            with self.table.batch_writer() as batch:
+            with self.table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as batch:
                 for item in old:
                     batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
                 for item in value:

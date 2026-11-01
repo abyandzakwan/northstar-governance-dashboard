@@ -1,0 +1,97 @@
+Mode: built-in image_gen.imagegen; two separate image edits.
+Final edits: Athena reads S3 directly and uses Glue for metadata; bidirectional API/data responses; manual scan trigger uses the Portal API Lambda icon.
+
+PORTAL FINAL CORRECTION PROMPT
+
+Make a precise technical correction to this portal access and data transactions diagram, preserving its title, subtitle, four numbered flows, AWS service labels, white-and-blue style, and concise explanatory captions. Keep all region descriptions, deployment-environment wording, shared operations items, and CI/CD absent.
+
+Correct the lower-right historical-query connections:
+- AWS Lambda Portal API invokes Amazon Athena: label the connection "Run SQL".
+- Amazon Athena uses AWS Glue only for table/catalog metadata: a short connector between Athena and Glue labeled "Table metadata".
+- Amazon Athena reads the data in Amazon S3 DIRECTLY, via a separate explicit connector from the ATHENA node to the existing Amazon S3 evidence/history node labeled "Read S3 history".
+- REMOVE the arrow from Glue to S3. AWS Glue is the catalog here, not the service reading the evidence objects.
+- Reposition Athena and Glue slightly within the lower-right area if needed to make these three separate relationships clear with no overlapping labels or crossing main arrows. Do not duplicate the S3 node.
+
+Clarify data responses in flow 3: change the existing horizontal API Gateway-to-Lambda connector into a TWO-HEADED arrow, and the Lambda-to-DynamoDB and Lambda-to-S3 connectors into TWO-HEADED arrows, preserving their labels. This shows requests and results in both directions. Keep the browser's separate request and JSON-response paths intact.
+Do not change anything else or add services, regions, or operations sections.
+
+EVIDENCE FINAL CORRECTION PROMPT
+
+Make ONE precise correction to this evidence collection and evaluation diagram. In the lower-left "Portal API • Manual scan request" box, replace the pink Amazon API Gateway service icon with the ORANGE AWS Lambda icon, since this trigger is the Portal API Lambda starting the scan workflow. Keep the exact existing label and connector from that box to the scan workflow. Preserve everything else: the complete layout, all other icons, the three input paths, worker sequence, sources, data stores, failure branch, title, subtitle, text, typography, colors, spacing and arrow positions. Do not add region descriptions, environment wording, shared operations items, or CI/CD.
+Reference image: docs/assets/aws-architecture-infrastructure-only.png
+
+PORTAL ACCESS AND DATA TRANSACTIONS
+
+Edit the provided AWS architecture diagram into a SEPARATE, self-contained picture devoted ONLY to portal access and data transactions.
+
+Keep the same polished visual style: white background, dark navy typography, subtle pale blue grouping, clean flat recognizable AWS service icons, orthogonal arrows, generous spacing, high-resolution landscape composition. Recompose the whole canvas rather than cropping the old picture. All labels must be readable.
+
+TITLE: "Northstar Governance Dashboard"
+SUBTITLE: "Portal access and data transactions"
+
+Absolutely remove ALL location and deployment-environment descriptions: no Sydney, no AWS region IDs, no "Regional services", no "Standalone", no "test environment", no account ID, no global/regional qualifiers, no deployment status badges. Remove the entire evidence collection/evaluation section from THIS picture; that will be a different image. Remove the entire shared security and operations section and its IAM, KMS, CloudWatch, X-Ray, SNS, and CloudTrail items. No CI/CD, Terraform, GitHub, deployment pipeline, or remediation services. Do not include a list of excluded services anywhere.
+
+Show one User / Browser on the left and the following clearly numbered flows, with concise labels describing what each transaction does:
+
+"1  Load the dashboard"
+Browser → a compact "Frontend delivery" group with AWS WAF protecting Amazon CloudFront → "Amazon S3 • React frontend". Label the CloudFront-to-S3 connection "Origin access control". Label the browser path "HTTPS • HTML, JavaScript, CSS". Use a clear short return indication "Dashboard assets". CloudFront serves frontend files only.
+
+"2  Sign in"
+Browser ↔ "Amazon Cognito • Password + MFA". Outbound label "Authenticate"; return label "JWT token". A small "AWS WAF protection" badge may remain attached to Cognito, without any region qualifier. A fine dashed relationship from Cognito to API Gateway may be labeled "Token issuer"; it is NOT a user traffic route.
+
+"3  Request and update data"
+Browser ↔ "Amazon API Gateway • HTTP API / JWT authorizer" ↔ "AWS Lambda • Portal API". Browser-to-API request label "HTTPS request + JWT"; return arrow label "JSON response". Place "Validate token" next to API Gateway, and "Check user permissions" next to Portal API. API Gateway is called DIRECTLY by the browser, without CloudFront in this path.
+Portal API ↔ "Amazon DynamoDB • Findings, scores, exceptions, settings" with label "Read / write records".
+Portal API ↔ "Amazon S3 • Evidence, exports, query results" with label "Read evidence / files".
+Keep arrows readable; separate request and response arrows or use a clear two-headed arrow with both request/response labels.
+
+"4  Query historical trends"
+A subordinate, compact branch from Portal API ↔ "Amazon Athena • Historical queries" which uses "AWS Glue • Data catalog" and reads historical evidence in the SAME Amazon S3 group. Label "Query S3 history". Show no duplicate evidence bucket. This is an on-demand branch, not a mandatory step for every API request.
+
+At the bottom use a short three-part explanatory caption, in readable text:
+"Frontend files come from S3 through CloudFront."
+"Cognito supplies the token; API Gateway validates it."
+"Lambda checks access, reads or updates data, and returns results to the dashboard."
+
+Do not show direct browser access to DynamoDB. Do not add a collection workflow, shared operations strip, region labels, account/environment details, custom domains, servers, VPCs, or unrelated services. Preserve precise service names and technical routing.
+
+EVIDENCE COLLECTION AND EVALUATION
+
+Edit the provided AWS architecture diagram into a SEPARATE, self-contained picture devoted ONLY to evidence collection and evaluation.
+
+Keep the same polished visual language as the reference: white background, navy text, subtle pale blue sections, familiar correct AWS service icons, clean orthogonal arrows, readable captions, generous spacing, high-resolution landscape composition. Recompose the entire canvas, not a simple crop. This must be one complete image independent of the portal-access diagram.
+
+TITLE: "Northstar Governance Dashboard"
+SUBTITLE: "Evidence collection and evaluation"
+
+Remove ALL region and deployment-environment descriptions: no Sydney, region IDs, "Regional services", "Standalone", "test environment", account numbers, global/regional qualifiers, deployment/status badges, or footer deployment claims. Remove the portal access section, browser login, Cognito, CloudFront, WAF and API Gateway from this picture. Remove the entire shared security and operations section and IAM, KMS, CloudWatch, X-Ray, SNS, and CloudTrail items. No CI/CD, Terraform, GitHub, deployment pipeline, or remediation services. Do not add a list of excluded services.
+
+Tell the actual runtime story with three clearly numbered areas:
+
+"1  Start a scan"
+There are THREE inputs to the SAME "AWS Step Functions • Scan workflow":
+A. "Amazon EventBridge Scheduler • Daily scan" → Scan workflow.
+B. "AWS change events" → "Amazon EventBridge" → "Amazon SQS • Event queue" → "AWS Lambda • Event handler" → Scan workflow.
+C. A small compact trigger "Portal API • Manual scan request" → Scan workflow, with an AWS Lambda icon if desired. This is only a trigger reference; don't reproduce portal infrastructure.
+Below the event queue, a separate "Amazon SQS • Dead-letter queue" has a branch from the event queue labeled "Repeated failures". The DLQ is not part of the successful serial flow. It also receives failed account scan work through a carefully placed dashed failure connector from the scan processing area. Keep this connector clearly outside main successful processing arrows.
+
+"2  Collect and evaluate"
+Inside a clearly outlined, lightly filled group labeled "Scan workflow", AWS Step Functions orchestrates THREE distinct AWS Lambda workers:
+"Discover • Identify target accounts"
+then "Collect • Read current evidence"
+then "Evaluate • Assess compliance and scores".
+Use Discover → Collect → Evaluate arrows, and make the sequence obvious. It is acceptable to show the Step Functions orchestration node immediately left of the worker group, but do not duplicate the same Step Functions service as two separate infrastructure resources.
+Below Collect, a compact "Evidence sources" group with "AWS Security Hub", "AWS Config", and "AWS resource APIs" feeds the Collect worker through an arrow labeled "Read-only evidence".
+Small note below sources: "Security Hub and Config must be enabled separately."
+Within or beneath Evaluate add a concise explanation: "Apply rule mappings and active exceptions; retain source-reported status."
+
+"3  Store results for the dashboard"
+From the worker/evaluation group, arrows labeled "Save findings and scores" and "Store evidence and history" lead to:
+"Amazon DynamoDB • Findings, account scores, exceptions"
+"Amazon S3 • Evidence snapshots and history".
+There is ONE instance of each data-store group, no duplicate reference storage.
+Add a small descriptive caption near data stores: "The Portal API reads these results for the dashboard."
+
+Bottom short caption: "Scheduled scans, change events, and manual requests refresh evidence. Scanning reads AWS state; it does not change resources."
+
+Do not show frontend hosting/login or shared security/monitoring strips. Do not add remediation, multi-account organization boundaries, AWS locations, deployment environment wording, unsupported services, or clutter. All service names must be spelled correctly, with no overlapping labels or crossing main arrows.

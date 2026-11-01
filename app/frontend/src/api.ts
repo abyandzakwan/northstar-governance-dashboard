@@ -22,6 +22,7 @@ export type Finding = {
   severity: string;
   detail?: string;
   region?: string;
+  sample_data?: boolean;
   waiver_id?: string;
   frameworks: Record<string, string[]>;
 };

@@ -34,6 +34,14 @@ The collector ingests all Security Hub controls it receives, using ASFF `Complia
 
 Enable Security Hub standards and Config recorders in the governed accounts/Regions first. Organization rollout needs a delegated administrator with cross-Region aggregation configured as appropriate. Regional standalone collection uses the pilot's own credentials. The app never invents a passing result when a service, subscription or permission is missing. The internal CIS/ISO catalog is a technical mapping, not certification or a replacement for AWS-reported standard associations.
 
+### Infrastructure and code drift
+
+Compliance evidence and IaC drift have different scopes. Security Hub, Config and direct read-only AWS calls describe the account's observed configuration. The evaluator compares those observations with the versioned rule catalog. Events request another scan; they do not compare arbitrary GitHub repositories or start remediation automatically.
+
+The nightly `drift.yml` workflow runs a normal Terraform plan for this portal's own state. Terraform refreshes managed resources through the provider before comparing them with configuration, as described in [HashiCorp's drift guide](https://developer.hashicorp.com/terraform/tutorials/state/resource-drift). Exit code 2 creates a tracking issue with a restricted plan artifact; it never applies that plan. This workflow is gated by `AWS_DEPLOYMENT_ENABLED`, which remains false for the manual standalone test release. It does not scan every workload workspace. Fleet-wide workspace drift scheduling still needs an inventory and trusted runner in the infrastructure repository.
+
+CloudFormation collection reads the last reported drift status. `NOT_CHECKED` is not evidence that a stack has no drift. A separate CloudFormation drift-detection operation must populate that status. Terraform likewise cannot detect unmanaged resources outside its state merely by reading a repository.
+
 ## Action and approval policy
 
 A finding event re-scans evidence; it never starts remediation. A scoped team owner or administrator must select current FAIL/WARN findings from the dashboard. Waived, unknown, closed and unclassified accounts are excluded. Mixed batches become separate requests per environment. Production OU membership overrides a lower-protection tag and is refreshed before application.
@@ -72,4 +80,20 @@ Step Functions invokes separate plan/apply/finalize Lambdas, with at most five c
 
 A Terraform failure is recorded per affected target/workspace. Fix IAM/backend/deployment prerequisites and create a fresh request/PR for failed targets. Terraform state locking and serial apply workflow concurrency protect state. Stale or failed changes are never blindly rolled back because rollback itself may be unsafe; the captured plan and actual current state inform a reviewed recovery change.
 
+### Rule rollout and blast radius
+
+Adding a catalog rule changes central evaluation; it does not install an AWS Config rule or enable a Security Hub control in member accounts. Those source controls must be enrolled separately. The current catalog has environment-specific severity and thresholds, but no per-account rule release channel or automatic fleet wave promotion. The API's CodeDeploy canary also does not canary the collector/evaluator workers.
+
+For production, introduce new rules in observation-only mode on explicit pilot accounts, validate evidence and score changes, then promote a pinned version through staging, a small production wave and the remaining OUs/Regions. Give each wave an explicit account list, concurrency limit, failure budget, health checks and a human promotion gate. Account-scoped rule versions and a fleet circuit breaker are required additions before claiming that this sequence is automatic.
+
+Existing enrollment StackSets bound concurrency and failure tolerance; native remediation limits concurrent targets to five. Neither makes a multi-account change atomic. Inspect per-account outcomes even when a StackSet operation says `SUCCEEDED`: AWS documents that [failures within tolerance can still produce that operation status](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-troubleshooting.html). Stop later waves on unexpected failures and recover only the affected accounts.
+
+For a bad evaluation release, redeploy the prior immutable worker artifact and rule catalog, then rescan. For workload changes, inspect actual state and submit a reviewed corrective PR against the owning workspace. Reverting Git alone does not revert AWS, and restoring an old Terraform state file does not undo resource changes. The portal API has alarm-driven CodeDeploy rollback; frontend and worker recovery require explicit prior-artifact publication. Retain evidence and per-target outcomes throughout recovery.
+
 Production exception creation and revocation require their own PR. An exception is not effective while pending. Every exception has an owner, reason and expiry; production expiry is limited to 90 days. Expiry is re-evaluated during scans and every 15 minutes. Accepted risk is visible and excluded from the pass denominator. Fully waived or missing evidence never produces a healthy account.
+
+## Portal identity and authorization
+
+The standalone pilot uses administrator-created Cognito users, mandatory authenticator MFA and OAuth authorization code with PKCE. API Gateway verifies issuer, audience, expiry and required scope before invoking the API. The backend derives authorization from those verified JWT claims: `gov-portal-admins` administers the portal, `gov-portal-viewers` reads accounts, and `gov-portal-team-<owner>` limits team access and permitted non-production actions. UI visibility is not the authorization boundary. Public HTTPS serves the application shell; account data requires authentication.
+
+For employees in production, use Cognito as the application broker to the corporate SAML provider so identity lifecycle and MFA follow company policy. The repository already supports this SAML mode; it requires corporate metadata and signed group mapping before activation. Cognito also supports [external SAML and OIDC identity providers](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-provider.html). This is a suitable architecture when it fits the organization's identity standards, rather than a universal requirement to create separate local employee passwords. Access changes are reflected in newly issued tokens; already issued access tokens retain their claims until expiry. Review token lifetime and session revocation requirements during production onboarding.

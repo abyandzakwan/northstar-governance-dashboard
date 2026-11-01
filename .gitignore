@@ -42,3 +42,18 @@ terraform.rc
 # Optional: ignore plan files saved before destroying Terraform configuration
 # Uncomment the line below if you want to ignore planout files.
 # planout
+
+# Generated application files and deployment artifacts
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.local/
+build/
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.tfplan

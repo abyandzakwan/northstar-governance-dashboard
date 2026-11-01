@@ -10,7 +10,7 @@ def test_300_account_synthetic_scan():
     AWS collection/STS is replaced by deterministic evidence, so this is a CPU/contract load gate,
     not evidence that live regional AWS APIs meet the scan-duration target.
     """
-    data = seed(299)
+    data = seed(300)
     started = monotonic()
 
     def scan(account):

@@ -170,6 +170,7 @@ def route(store, principal, method, path, query=None, body=None):
             "admin": principal.admin,
             "teams": principal.teams,
             "mode": "demo" if demo else "aws",
+            "sample_securityhub": os.environ.get("SECURITYHUB_SAMPLE_FALLBACK") == "true",
             "deployment_mode": os.environ.get("DEPLOYMENT_MODE", "organization"),
             "auth_mode": os.environ.get("AUTH_MODE", "saml"),
             "classification": "Confidential",

@@ -220,7 +220,7 @@ resource "aws_apigatewayv2_integration" "api" {
 }
 
 resource "aws_apigatewayv2_route" "api" {
-  for_each             = toset(["GET /session", "GET /environments", "GET /environments/{env}/accounts", "GET /accounts", "GET /accounts/{id}", "GET /accounts/{id}/findings", "GET /accounts/{id}/deployments", "GET /rules", "GET /rules/{id}/accounts", "GET /frameworks/{id}", "GET /deployments", "GET /trends", "POST /reports", "GET /reports/{id}", "GET /waivers", "POST /waivers", "DELETE /waivers/{id}", "POST /scans", "GET /settings/weekly", "PUT /settings/weekly"])
+  for_each             = toset(["GET /session", "GET /environments", "GET /environments/{env}/accounts", "GET /accounts", "GET /accounts/{id}", "GET /accounts/{id}/findings", "GET /accounts/{id}/deployments", "GET /rules", "GET /rules/{id}/accounts", "GET /frameworks", "GET /frameworks/{id}", "GET /deployments", "GET /trends", "POST /reports", "GET /reports/{id}", "GET /waivers", "POST /waivers", "DELETE /waivers/{id}", "POST /scans", "GET /settings/weekly", "PUT /settings/weekly", "GET /changes", "POST /changes", "GET /changes/{id}", "POST /changes/{id}/execute", "POST /changes/{id}/retry"])
   api_id               = aws_apigatewayv2_api.portal.id
   route_key            = each.value
   target               = "integrations/${aws_apigatewayv2_integration.api.id}"
@@ -254,9 +254,11 @@ resource "aws_apigatewayv2_stage" "live" {
 }
 
 resource "aws_lambda_permission" "api" {
-  statement_id  = "APIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = var.api_alias_arn
+  statement_id = "APIGateway"
+  action       = "lambda:InvokeFunction"
+  # AWS normalizes an alias ARN into the base function ARN and qualifier.
+  function_name = trimsuffix(var.api_alias_arn, ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.portal.execution_arn}/*/*"
 }

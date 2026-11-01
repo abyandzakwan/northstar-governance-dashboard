@@ -1,0 +1,36 @@
+Mode: built-in image_gen.imagegen; edit of the detailed portal access diagram.
+Reference: docs/assets/aws-portal-access-data-transactions.png
+Scope: Senior-management functional overview of portal access. The evidence collection diagram is separate.
+
+Edit the supplied detailed Northstar portal diagram into a MUCH SIMPLER senior-management presentation graphic. This is an executive functional overview and user journey, not a network routing or transaction diagram.
+
+Rebuild the layout completely. Keep the white background, restrained navy and pale blue styling, polished AWS architecture identity and recognizable service names, but dramatically reduce density. Landscape slide-friendly 16:9 framing, generous whitespace, large readable text, no tiny labels. Title must be "Northstar Governance Dashboard". Subtitle: "How users access governance information".
+
+Show exactly THREE large, well-spaced numbered stages in one horizontal row, connected by two simple right-facing arrows BETWEEN THE STAGE HEADINGS. Label the overall row "User journey", so these are logical user steps rather than network hops. Do not connect individual AWS service icons across stages.
+
+STAGE 1:
+Heading: "1  Open the portal"
+One short description: "Load the dashboard securely"
+Supporting service label, secondary to the heading: "AWS WAF · CloudFront · S3"
+A small, clean row of the correct recognizable AWS WAF, Amazon CloudFront, and Amazon S3 service icons may support this stage.
+
+STAGE 2:
+Heading: "2  Sign in securely"
+One short description: "Verify user identity"
+Supporting service label: "Amazon Cognito"
+Use a single clear Amazon Cognito service icon. No detailed password, token, or protocol explanation.
+
+STAGE 3:
+Heading: "3  View governance insights"
+One short description: "Explore compliance, risks and evidence"
+Supporting service label: "API Gateway · Lambda"
+A compact subordinate data label WITHIN this same stage: "Data: DynamoDB · S3"
+Use a simple pair of AWS API Gateway and Lambda icons, with the data service names as readable text rather than a complicated subdiagram. Keep all text similar in size and prominence to the other stages; do not crowd this stage.
+
+Below the three stages, include just ONE concise takeaway, centered:
+"One place to view compliance status, risks and supporting evidence."
+
+No other boxes, sections, badges, detailed sub-flows, legends, explanatory paragraphs, or duplicated captions. Keep the stages visually balanced and use short lines.
+REMOVE all existing technical arrow labels and jargon: JWT, HTTPS, JSON, SQL, origin access control, read/write, token issuer, table metadata, Athena, Glue and historical-query branches.
+No evidence collection/evaluation workflow, shared security and operations strip, region labels, account numbers, standalone/test wording, CI/CD, deployment details, IAM, KMS, monitoring, or remediation.
+Do NOT imply a real network path from CloudFront through Cognito into the API. Arrows express only the named user journey from opening the portal to signing in and viewing insights. Retain exactly the three stage titles and concise copy above. Prioritize instant comprehension by senior management from across a meeting room.

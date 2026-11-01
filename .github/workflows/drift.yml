@@ -20,6 +20,7 @@ jobs:
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
       TFVARS_PROFILE: central
+      PORTAL_TFVARS_JSON: ${{ vars.PORTAL_TFVARS_JSON }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +34,8 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+      - name: Load portal configuration
+        run: python ci/portal_config.py
       - name: Read the currently deployed artifact
         run: |
           mkdir -p build

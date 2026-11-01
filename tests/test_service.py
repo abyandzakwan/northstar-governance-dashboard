@@ -8,7 +8,7 @@ from portal.service import NotFound, export_bytes, route
 from portal.store import LocalStore
 
 ADMIN = Principal("admin", ("gov-portal-admins",))
-TEAM = Principal("team", ("gov-portal-team-payments",))
+TEAM = Principal("team", ("gov-portal-team-booking",))
 VIEWER = Principal("viewer", ("gov-portal-viewers",))
 
 
@@ -29,8 +29,8 @@ def test_no_unverified_headers_can_grant_access():
 
 def test_team_filter_applies_before_dashboard_and_framework_aggregation(store):
     _, response = route(store, TEAM, "GET", "/accounts")
-    assert response["items"] and all(a["owner_team"] == "payments" for a in response["items"])
-    other = next(a for a in store.all("accounts") if a["owner_team"] != "payments")
+    assert response["items"] and all(a["owner_team"] == "booking" for a in response["items"])
+    other = next(a for a in store.all("accounts") if a["owner_team"] != "booking")
     with pytest.raises(NotFound):
         route(store, TEAM, "GET", f"/accounts/{other['id']}/findings")
     _, report = route(store, TEAM, "GET", "/frameworks/cis-aws")
@@ -41,7 +41,7 @@ def test_team_filter_applies_before_dashboard_and_framework_aggregation(store):
 
 def test_prod_waiver_requires_admin_and_90_day_limit(store):
     prod = next(
-        a for a in store.all("accounts") if a["environment"] == "production" and a["owner_team"] == "payments"
+        a for a in store.all("accounts") if a["environment"] == "production" and a["owner_team"] == "booking"
     )
     request = {
         "account_id": prod["id"],
@@ -83,7 +83,7 @@ def test_only_admin_can_scan_and_request_scope_is_validated(store):
 
 def test_report_is_scoped_owned_classified_and_formula_safe(store):
     _, report = route(store, TEAM, "POST", "/reports", body={"format": "csv"})
-    assert all(store.get("accounts", aid)["owner_team"] == "payments" for aid in report["account_ids"])
+    assert all(store.get("accounts", aid)["owner_team"] == "booking" for aid in report["account_ids"])
     with pytest.raises(NotFound):
         route(store, ADMIN, "GET", "/reports/" + report["id"])
     aid = report["account_ids"][0]
@@ -148,7 +148,7 @@ def test_deployments_are_paginated_and_team_scoped(store):
     assert first["next_cursor"] == "2"
     _, second = route(store, TEAM, "GET", "/deployments", query={"limit": "2", "cursor": "2"})
     assert {d["account_id"] for d in first["items"]}.isdisjoint(d["account_id"] for d in second["items"])
-    assert all(store.get("accounts", d["account_id"])["owner_team"] == "payments" for d in second["items"])
+    assert all(store.get("accounts", d["account_id"])["owner_team"] == "booking" for d in second["items"])
 
 
 def test_expired_waivers_are_reevaluated_by_health_schedule(store, monkeypatch):

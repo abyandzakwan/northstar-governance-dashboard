@@ -1,0 +1,12 @@
+{
+  "stage": "central",
+  "account_id": "YOUR_12_DIGIT_ACCOUNT_ID",
+  "region": "ap-southeast-1",
+  "deployment_mode": "standalone",
+  "auth_mode": "cognito",
+  "standalone_account_name": "Northstar testing account",
+  "standalone_environment": "testing",
+  "owner": "abyandzakwan",
+  "collection_regions": ["ap-southeast-1"],
+  "enable_remediation": false
+}
