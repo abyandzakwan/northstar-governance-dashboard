@@ -1,11 +1,2 @@
-# Replace these example teams with real teams before enabling required Code Owner reviews.
-* @your-org/platform
-/governance/ @your-org/governance @your-org/security
-/infra/ @your-org/platform @your-org/security
-/.github/ @your-org/security
-/ci/ @your-org/platform @your-org/security
-# Replace these example reviewers with real authorized users/teams.
-/governance/workspaces.yaml @YOUR-ORG/platform-security
-/.governance/changes/production/ @YOUR-ORG/platform-security
-/accounts/production/ @YOUR-ORG/platform-security
-/ci/terraform_remediation.py @YOUR-ORG/platform-security
+# Add independent reviewers here before enabling production remediation.
+* @abyandzakwan

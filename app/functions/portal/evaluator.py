@@ -24,6 +24,7 @@ def handler(event, context):
         deployment_drift_count=sum(d["drift_status"] == "DRIFTED" for d in payload["deployments"]),
         last_scanned_at=timestamp(),
         collection_errors=payload.get("collection_errors", []),
+        sample_data=any(f.get("sample_data") for f in findings),
     )
     store.put("accounts", account["id"], account)
     if payload.get("snapshot"):

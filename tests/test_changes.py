@@ -13,7 +13,7 @@ from portal.service import route
 from portal.store import LocalStore
 
 ADMIN = Principal("admin", ("gov-portal-admins",))
-TEAM = Principal("team", ("gov-portal-team-payments",))
+TEAM = Principal("team", ("gov-portal-team-booking",))
 VIEWER = Principal("viewer", ("gov-portal-viewers",))
 
 
@@ -84,7 +84,7 @@ def test_scope_and_current_evidence_are_server_authoritative(store):
     with pytest.raises(AccessDenied):
         changes.create(store, VIEWER, {"targets": [pick]})
     with pytest.raises(AccessDenied):
-        changes.create(store, TEAM, {"targets": [target(store, "dev", "platform")]})
+        changes.create(store, TEAM, {"targets": [target(store, "dev", "flight")]})
     job = create(store, {**pick, "environment": "dev", "desired": {"allow_all": True}})[0]
     assert job["requires_approval"]
     assert "allow_all" not in job["targets"][0]["desired"]

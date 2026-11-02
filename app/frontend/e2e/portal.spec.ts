@@ -1,5 +1,19 @@
 import { test, expect } from "@playwright/test";
 
+test("deployed sample fallback is clearly labelled", async ({ page }) => {
+  await page.route("**/api/session", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      json: { ...(await response.json()), mode: "aws", sample_securityhub: true },
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByText("Sample Security Hub data", { exact: true })).toBeVisible();
+  await expect(page.getByText("AWS + sample findings", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Scores may include sample data/)).toBeVisible();
+});
+
 test("native Cognito sign-in starts PKCE without a SAML provider", async ({
   page,
 }) => {
@@ -47,7 +61,7 @@ test("overview, filters, account evidence, framework drill-down and reports work
   await expect(
     page.getByText("Interactive demo", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".metric strong").nth(1)).toHaveText("37");
+  await expect(page.locator(".metric strong").nth(1)).toHaveText("6");
   await page.screenshot({
     path: "test-results/overview-desktop.png",
     fullPage: true,
@@ -59,12 +73,12 @@ test("overview, filters, account evidence, framework drill-down and reports work
   await page
     .getByLabel("Environment", { exact: true })
     .selectOption("production");
-  await page.getByLabel("Search accounts").fill("core-platform");
+  await page.getByLabel("Search accounts").fill("ns-fligth");
   await expect(
-    page.getByRole("button", { name: "core-platform-production" }).first(),
+    page.getByRole("button", { name: "ns-fligth-production" }).first(),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "core-platform-production" })
+    .getByRole("button", { name: "ns-fligth-production" })
     .first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -130,7 +144,7 @@ test("production waiver validation, approval and revocation work", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".metric strong").nth(1)).toHaveText("37");
+  await expect(page.locator(".metric strong").nth(1)).toHaveText("6");
   const response = await page.request.get("/api/accounts?env=production");
   const accounts = (await response.json()).items;
   const account = accounts.find(
@@ -214,7 +228,7 @@ test("multi-account remediation gates production and recovers failed native targ
   for (const environment of ["dev", "production"]) {
     const account = accounts.find(
       (a: { name: string; environment: string }) =>
-        a.environment === environment && a.name.startsWith("core-platform"),
+        a.environment === environment && a.name.startsWith("ns-fligth"),
     );
     await page.getByLabel("Remediation account").selectOption(account.id);
     await page

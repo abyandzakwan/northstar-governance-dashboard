@@ -132,6 +132,9 @@ resource "aws_lambda_function" "function" {
 
   logging_config {
     log_format = "JSON"
+    # Explicit AWS defaults avoid false publish-version diffs in provider 5.100.
+    application_log_level = "INFO"
+    system_log_level      = "INFO"
   }
 
   dead_letter_config {

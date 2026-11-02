@@ -123,7 +123,7 @@ resource "aws_iam_role_policy" "deploy" {
         Effect = "Allow", Action = ["lambda:*"], Resource = "arn:aws:lambda:${var.region}:${var.account_id}:function:${var.name}-*"
       },
       {
-        Effect = "Allow", Action = ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateAssumeRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:TagRole", "iam:UntagRole", "iam:PassRole"], Resource = [for role in ["api", "discovery", "collector", "evaluator", "events", "reports", "retry", "health", "auth", "states", "scheduler", "codedeploy"] : "arn:aws:iam::${var.account_id}:role/${var.name}-${role}"]
+        Effect = "Allow", Action = ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateAssumeRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:TagRole", "iam:UntagRole", "iam:PassRole"], Resource = [for role in ["api", "discovery", "collector", "evaluator", "events", "reports", "retry", "health", "auth", "states", "scheduler", "codedeploy", "remediation_validate", "remediation_plan", "remediation_apply", "remediation_finalize", "remediation_callback", "remediation-workflow"] : "arn:aws:iam::${var.account_id}:role/${var.name}-${role}"]
       },
       {
         Effect = "Allow", Action = ["dynamodb:*"], Resource = "arn:aws:dynamodb:${var.region}:${var.account_id}:table/${var.name}-*"

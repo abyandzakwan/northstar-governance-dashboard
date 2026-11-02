@@ -1,0 +1,44 @@
+Tool: built-in image_gen.imagegen
+Source: existing standalone architecture image, checked against Terraform in infra/stacks/portal and infra/modules.
+Scope: Standalone testing infrastructure only. Live remediation is disabled. CI/CD is omitted.
+Reference image: docs/assets/aws-architecture-standalone.png
+
+Edit the supplied Northstar Governance Dashboard architecture picture into a clean, polished AWS INFRASTRUCTURE-ONLY diagram. Preserve the overall professional visual language: white background, navy labels, pale blue sections, AWS-style flat service icons, orthogonal directional arrows, clear typography. Recompose the whole picture so the final canvas is balanced with large readable labels. This is a diagram of the existing repository's standalone test setup, not a proposed redesign.
+
+TITLE: "Northstar Governance Dashboard"
+SUBTITLE: "AWS infrastructure • Standalone test environment"
+Top-right small header: "Regional services: Sydney • ap-southeast-2"
+Small status label: "Architecture from repository • Simplified view"
+Remove the numeric AWS account ID. Do not draw broad account, Region, or VPC boundary outlines. The Global edge group is a distinct small group; everything else is regional unless a global service is named.
+
+MOST IMPORTANT CHANGE: Completely remove the entire "3 Deploy with GitHub" section, including every GitHub icon, GitHub Actions label, OIDC label, deployment IAM plan/deploy role, Terraform plan/review/apply boxes, Terraform state/release artifact bucket, CodeDeploy node, deployment arrows, and every CI/CD reference. Do not leave white space where this section was; rebalance remaining content into TWO spacious main bands plus a shared-services band. Do not include CI/CD even as a footnote, subtitle, exclusion label, or icon. Runtime IAM permissions are still valid in the shared-services band.
+
+TOP BAND: "1  Portal access and data"
+External "User / Browser" at the left, with THREE separate paths:
+1) "Load dashboard" → a dashed purple "Global edge" group containing "AWS WAF" and "Amazon CloudFront" → "Amazon S3 • React frontend", with the S3 arrow labeled "Origin access control". Add the small accurate note "WAF configuration: us-east-1" inside the Global edge group. CloudFront only serves frontend assets.
+2) "Sign in" → "Amazon Cognito • Password + MFA" with a small "Regional WAF" label attached. Return arrow from Cognito to Browser labeled "JWT". If adding a dotted connector to API Gateway, label it "JWT issuer"; it is an identity relationship, not API traffic.
+3) "API calls + JWT" DIRECTLY from Browser → "Amazon API Gateway • HTTP API / JWT authorizer" → "AWS Lambda • Portal API" → a single "Data stores" group with "Amazon DynamoDB • Findings, scores, exceptions" and "Amazon S3 • Evidence, exports, query results".
+No arrow from CloudFront to API Gateway; no API Gateway in the events pipeline.
+Under or adjacent to data storage, a compact "Amazon Athena + AWS Glue • Historical trends" box links to Portal API and S3 history. Show these as query/catalog services, not storage or mandatory in-line API processing.
+
+SECOND BAND: "2  Evidence collection and evaluation"
+Show a compact chain "AWS change events" → "Amazon EventBridge" → "Amazon SQS • Event queue" → "AWS Lambda • Event handler" → "AWS Step Functions • Scan workflow".
+Below SQS, a subordinate separate "Amazon SQS • Dead-letter queue" is reached via a short branch labeled "Failures"; the DLQ is NOT part of the successful serial event path.
+A separate "EventBridge Scheduler • Daily scan" arrow also feeds the SAME Scan workflow.
+Scan workflow → a clear "AWS Lambda workers" group with "Discover → Collect → Evaluate".
+A dashed "Evidence sources" group below the workers lists "AWS Security Hub", "AWS Config", "AWS resource APIs". Add the note "Security Hub and Config enabled separately". Connect workers and sources with "Read-only collection"; make the arrow point from sources toward workers for evidence ingestion or use a two-headed labeled read relation.
+Workers write results to the SAME data stores shown in the top band. Prefer a clean connector to the existing group if uncluttered, otherwise show a small repeated reference with title "Shared data stores (same as above)" and "DynamoDB + S3", explicitly marking it as a reference, not more infrastructure.
+Include a small dashed "Manual scan" connector from Portal API to Scan workflow.
+Do not add remediation workflow nodes: live remediation is disabled in this setup.
+
+BOTTOM BAND: "Shared security and operations"
+Four compact clearly labeled groups:
+"IAM + KMS • Runtime permissions and encryption"
+"CloudWatch + X-Ray • Logs, metrics, traces"
+"Amazon SNS • Operational alerts"
+"CloudTrail → S3 audit • Evidence access"
+Show a small arrow CloudWatch → SNS if layout permits.
+Final small footer: "One AWS account • Live remediation disabled • Logical service groups"
+
+DO NOT add: GitHub, CodeDeploy, CodePipeline, build jobs, pipeline stages, Terraform, deployment review gates, release/state storage, EC2, VPCs, subnets, NAT, ALB, EKS, RDS, Organizations, member accounts, Route 53, ACM custom domains, or invented infrastructure.
+The final picture must be high-resolution landscape, legible, and contain no awkward line crossings or clipped text. Keep recognizable correct AWS service icons, not arbitrary extra icons. Exact service names and technically correct flow matter more than decoration.

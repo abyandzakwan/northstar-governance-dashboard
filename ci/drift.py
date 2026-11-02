@@ -17,7 +17,7 @@ with output.open("w") as stream:
             "-input=false",
             "-no-color",
             "-detailed-exitcode",
-            f"-var-file=../../envs/{profile}.tfvars",
+            f"-var-file=../../envs/{profile}.tfvars.json",
             f"-var=artifact_bucket={os.environ['ARTIFACT_BUCKET']}",
             f"-var=artifact_version={os.environ['ARTIFACT_VERSION']}",
             f"-var=artifact_hash={os.environ['ARTIFACT_HASH']}",

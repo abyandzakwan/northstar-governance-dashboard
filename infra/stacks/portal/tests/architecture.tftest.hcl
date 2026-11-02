@@ -67,3 +67,41 @@ run "one_central_pilot_has_gated_remediation" {
     error_message = "Plan validation and execution callbacks must have separate IAM boundaries."
   }
 }
+
+run "sample_evidence_is_only_for_standalone_without_writes" {
+  command = plan
+  variables {
+    stage                       = "central"
+    deployment_mode             = "standalone"
+    auth_mode                   = "cognito"
+    securityhub_sample_fallback = true
+  }
+  assert {
+    condition     = module.runtime.functions.api.name != "" && length(local.remediation_write) == 0
+    error_message = "Sample evidence must not grant remediation writes."
+  }
+}
+
+run "sample_evidence_rejects_live_remediation" {
+  command = plan
+  variables {
+    stage                       = "central"
+    deployment_mode             = "standalone"
+    auth_mode                   = "cognito"
+    securityhub_sample_fallback = true
+    enable_remediation          = true
+  }
+  expect_failures = [var.securityhub_sample_fallback]
+}
+
+run "regional_migration_isolates_global_and_regional_resource_names" {
+  command = plan
+  variables {
+    stage           = "central"
+    resource_suffix = "-ap-southeast-1"
+  }
+  assert {
+    condition     = local.name == "gov-portal-central-ap-southeast-1" && output.frontend_bucket == "gov-portal-central-ap-southeast-1-frontend-111111111111"
+    error_message = "The Singapore replacement must use distinct names while the existing deployment is retained."
+  }
+}

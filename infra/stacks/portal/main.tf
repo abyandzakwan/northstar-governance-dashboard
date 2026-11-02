@@ -1,5 +1,5 @@
 locals {
-  name              = "gov-portal-${var.stage}"
+  name              = "gov-portal-${var.stage}${var.resource_suffix}"
   state_machine_arn = "arn:aws:states:${var.region}:${var.account_id}:stateMachine:${local.name}-scan"
   functions_arn     = "arn:aws:lambda:${var.region}:${var.account_id}:function:${local.name}"
   table_read = {
@@ -81,6 +81,7 @@ module "runtime" {
     REMEDIATION_APPROVERS         = join(",", var.remediation_approvers), REMEDIATION_MEMBER_ROLE = var.remediation_member_role,
     REMEDIATION_STATE_MACHINE_ARN = local.remediation_state_machine_arn, REMEDIATIONS_PATH = "/var/task/governance/remediations.yaml",
     DEPLOYMENT_MODE               = var.deployment_mode, AUTH_MODE = var.auth_mode,
+    SECURITYHUB_SAMPLE_FALLBACK   = tostring(var.securityhub_sample_fallback),
     STANDALONE_ACCOUNT_ID         = var.account_id, STANDALONE_ACCOUNT_NAME = var.standalone_account_name,
     STANDALONE_ENVIRONMENT        = var.standalone_environment, STANDALONE_OWNER_TEAM = var.owner,
     COLLECTION_REGIONS            = jsonencode(length(var.collection_regions) > 0 ? var.collection_regions : var.deployment_mode == "standalone" ? [var.region] : []),
@@ -120,7 +121,7 @@ module "runtime" {
     collector = concat([local.table_write, local.history_write, local.queue_send,
       { Effect = "Allow", Action = ["securityhub:GetFindings", "securityhub:DescribeStandards", "securityhub:GetEnabledStandards", "config:SelectAggregateResourceConfig", "config:DescribeAggregateComplianceByConfigRules", "config:GetAggregateComplianceDetailsByConfigRule", "cloudformation:ListStackInstances"], Resource = "*" }
       ], [for statement in [
-        { Effect = "Allow", Action = ["sts:GetCallerIdentity", "ec2:DescribeRegions", "cloudformation:DescribeStacks", "backup:ListBackupPlans", "backup:ListBackupSelections", "backup:GetBackupSelection", "s3:ListAllMyBuckets", "s3:GetEncryptionConfiguration", "config:SelectResourceConfig", "config:DescribeComplianceByConfigRule", "config:GetComplianceDetailsByConfigRule"], Resource = "*" }
+        { Effect = "Allow", Action = ["sts:GetCallerIdentity", "ec2:DescribeRegions", "cloudformation:DescribeStacks", "cloudformation:ListStacks", "backup:ListBackupPlans", "backup:ListBackupSelections", "backup:GetBackupSelection", "s3:ListAllMyBuckets", "s3:GetEncryptionConfiguration", "config:SelectResourceConfig", "config:DescribeComplianceByConfigRule", "config:GetComplianceDetailsByConfigRule"], Resource = "*" }
         ] : statement if var.deployment_mode == "standalone"], [for statement in [
         { Effect = "Allow", Action = "sts:AssumeRole", Resource = "arn:aws:iam::*:role/${var.member_role_name}", Condition = { StringEquals = { "aws:ResourceOrgID" = var.organization_id } } }
     ] : statement if var.deployment_mode == "organization"]),

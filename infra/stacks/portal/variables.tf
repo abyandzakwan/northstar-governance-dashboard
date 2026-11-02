@@ -14,6 +14,15 @@ variable "account_id" {
   }
 }
 
+variable "resource_suffix" {
+  type    = string
+  default = ""
+  validation {
+    condition     = can(regex("^(-[a-z0-9-]{1,18})?$", var.resource_suffix))
+    error_message = "Use an empty suffix or a hyphen followed by up to 18 lowercase letters, digits or hyphens."
+  }
+}
+
 variable "deployment_mode" {
   type    = string
   default = "organization"
@@ -47,6 +56,15 @@ variable "standalone_environment" {
 variable "collection_regions" {
   type    = list(string)
   default = []
+}
+
+variable "securityhub_sample_fallback" {
+  type    = bool
+  default = false
+  validation {
+    condition     = !var.securityhub_sample_fallback || (var.deployment_mode == "standalone" && !var.enable_remediation && contains(["central", "dev"], var.stage))
+    error_message = "Sample Security Hub evidence is limited to standalone test portals with live remediation disabled."
+  }
 }
 
 variable "region" {

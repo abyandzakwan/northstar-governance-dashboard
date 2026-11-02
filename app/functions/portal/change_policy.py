@@ -61,6 +61,8 @@ def manifest(job):
 
 
 def validate_target(account, finding):
+    if finding.get("sample_data") or finding.get("source") == "securityhub-sample":
+        raise ValueError("Sample findings cannot be used for live remediation")
     if account.get("closed_at") or approval_environment(account) == "unclassified":
         raise ValueError("Closed or unclassified accounts cannot be remediated")
     if finding["status"] not in {"FAIL", "WARN"}:

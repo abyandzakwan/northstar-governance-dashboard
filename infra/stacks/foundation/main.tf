@@ -10,6 +10,18 @@ variable "stage" { type = string }
 variable "account_id" { type = string }
 variable "region" { type = string }
 variable "repository" { type = string }
+variable "resource_suffix" {
+  type    = string
+  default = ""
+  validation {
+    condition     = can(regex("^(-[a-z0-9-]{1,18})?$", var.resource_suffix))
+    error_message = "Use an empty suffix or a hyphen followed by up to 18 lowercase letters, digits or hyphens."
+  }
+}
+variable "enable_org_bootstrap_roles" {
+  type    = bool
+  default = true
+}
 variable "release_slack_secret_arn" {
   type    = string
   default = ""
@@ -30,7 +42,7 @@ provider "aws" {
   }
 }
 locals {
-  name    = "gov-portal-${var.stage}"
+  name    = "gov-portal-${var.stage}${var.resource_suffix}"
   buckets = { state = "${local.name}-state-${var.account_id}", artifacts = "${local.name}-artifacts-${var.account_id}" }
 }
 resource "aws_kms_key" "foundation" {
@@ -92,7 +104,7 @@ module "github_oidc" {
   release_slack_kms_arn    = var.release_slack_kms_arn
 }
 resource "aws_iam_role" "org" {
-  for_each           = contains(["central", "prod"], var.stage) ? { plan = "org-bootstrap-plan", apply = "org-bootstrap" } : {}
+  for_each           = var.enable_org_bootstrap_roles && contains(["central", "prod"], var.stage) ? { plan = "org-bootstrap-plan", apply = "org-bootstrap" } : {}
   name               = "gov-portal-github-org-${each.key}"
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Federated = module.github_oidc.provider_arn }, Action = "sts:AssumeRoleWithWebIdentity", Condition = { StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com", "token.actions.githubusercontent.com:sub" = "repo:${var.repository}:environment:${each.value}" } } }] })
 }

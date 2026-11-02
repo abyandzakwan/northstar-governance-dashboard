@@ -24,17 +24,24 @@ def securityhub_evidence(account_id):
 
 
 def securityhub_region(account_id, hub):
+    return securityhub_findings(
+        pages(
+            hub,
+            "get_findings",
+            "Findings",
+            Filters={
+                "AwsAccountId": [{"Value": account_id, "Comparison": "EQUALS"}],
+                "RecordState": [{"Value": "ACTIVE", "Comparison": "EQUALS"}],
+            },
+        )
+    )
+
+
+def securityhub_findings(findings):
     rules = {r["check"]: r["id"] for r in catalog()["rules"] if r["source"] == "securityhub"}
     observations = []
-    for finding in pages(
-        hub,
-        "get_findings",
-        "Findings",
-        Filters={
-            "AwsAccountId": [{"Value": account_id, "Comparison": "EQUALS"}],
-            "RecordState": [{"Value": "ACTIVE", "Comparison": "EQUALS"}],
-        },
-    ):
+    for finding in findings:
+        sample = finding.get("ProductFields", {}).get("northstar/sample") == "true"
         control = finding.get("Compliance", {}).get("SecurityControlId")
         if not control:
             control = finding.get("ProductFields", {}).get("ControlId")
@@ -51,7 +58,8 @@ def securityhub_region(account_id, hub):
                     "status": status,
                     "region": resource.get("Region", finding.get("Region", "")),
                     "detail": finding.get("Description", ""),
-                    "evidence_source": "securityhub",
+                    "evidence_source": "securityhub-sample" if sample else "securityhub",
+                    "sample_data": sample,
                     "security_control_id": control,
                     "finding_id": finding["Id"],
                     "product_arn": finding["ProductArn"],
@@ -64,6 +72,27 @@ def securityhub_region(account_id, hub):
                 }
             )
     return observations
+
+
+def collect_securityhub(account_id):
+    """Explicit standalone fallback; samples never replace available real findings."""
+    fallback = os.environ.get("SECURITYHUB_SAMPLE_FALLBACK") == "true"
+    if fallback and (
+        os.environ.get("DEPLOYMENT_MODE") != "standalone"
+        or os.environ.get("REMEDIATION_ENABLED") == "true"
+    ):
+        raise ValueError("Sample evidence requires standalone mode with live remediation disabled")
+    try:
+        observations = securityhub_evidence(account_id)
+    except ClientError:
+        if not fallback:
+            raise
+        observations = []
+    if observations or not fallback:
+        return observations
+    from portal.sample_securityhub import sample_findings
+
+    return securityhub_findings(sample_findings(account_id, os.environ.get("AWS_REGION", "ap-southeast-2")))
 
 
 def config_evidence(account_id):
@@ -409,7 +438,7 @@ def handler(event, context):
             get_store().put("standards", standard["id"], standard)
     except ClientError as exc:
         errors.append({"source": "securityhub_standards", "error": exc.response["Error"]["Code"]})
-    for source in (securityhub_evidence, config_evidence):
+    for source in (collect_securityhub, config_evidence):
         try:
             evidence.extend(source(account["id"]))
         except ClientError as exc:

@@ -1,0 +1,58 @@
+Tool: built-in image_gen.imagegen
+Source: Terraform in infra/stacks/portal, infra/stacks/foundation, and their modules.
+Scope: Planned standalone test deployment in AWS account 294056656040, ap-southeast-2.
+
+INITIAL GENERATION PROMPT
+
+Create a polished, technically accurate AWS architecture diagram as a high-resolution landscape image, roughly 16:10 aspect ratio. It is for a software engineer explaining their real Terraform repository, not a conceptual redesign. White background, generous whitespace, crisp readable labels, orthogonal arrows, navy text, subtle pale blue group backgrounds, familiar flat AWS-style service icons and restrained service colors. Avoid decorative cloud scenery, 3D, tiny text, and crossing arrows. Prioritize clarity and correct connections over showing every support function.
+
+TITLE: "Northstar Governance Dashboard"
+SUBTITLE: "AWS architecture • Standalone test deployment"
+ACCOUNT LABEL: "AWS account 294056656040"
+REGION LABEL: "Sydney • ap-southeast-2"
+STATUS SMALL LABEL: "Planned from Terraform • Simplified view"
+
+Organize the page into three clearly numbered sections plus a narrow shared-services strip. Draw a single AWS account boundary; the user/browser and GitHub Actions are outside it. All regional application, collection and storage services belong inside the Sydney region boundary. CloudFront and its WAF belong in a separate Global edge area, annotated "WAF configuration: us-east-1". Do NOT put these serverless services inside a VPC.
+
+SECTION 1, the largest top section, title "1  Use the portal".
+Show a Browser/User outside AWS at the left.
+There are THREE distinct browser paths:
+A. "Load dashboard" arrow to the Global edge group "AWS WAF + CloudFront", then an "Origin access control" arrow to "S3 • React frontend" INSIDE Sydney. CloudFront serves only static frontend content.
+B. "Sign in" arrow from Browser to "Cognito • Password + MFA" inside Sydney. Attach a small label "Regional WAF" to Cognito. Cognito returns JWT tokens to the browser; use a short return arrow labeled "JWT".
+C. A separate direct Browser arrow labeled "API calls + JWT" to "API Gateway • JWT authorizer", then to "Lambda • Portal API", then to a data group showing "DynamoDB • Findings, scores, exceptions" and "S3 • Evidence, exports, query results". Make it unambiguous that the browser calls API Gateway directly: no CloudFront-to-API arrow. A small dotted line from Cognito to the API Gateway JWT authorizer may be labeled "Validate token".
+Near storage, a compact "Athena + Glue • Historical trends" box connects to Lambda Portal API and S3 evidence. It is queried on demand. Keep these subordinate to the main path.
+
+SECTION 2, lower left or middle, title "2  Collect and evaluate".
+Show "EventBridge Scheduler • Daily scan" and a compact second input "AWS change events → EventBridge → SQS / DLQ → Event Lambda" feeding "Step Functions • Scan workflow".
+Then flow to a single grouped box "Lambda workers" with three short labels "Discover → Collect → Evaluate".
+Connect these workers to the SAME DynamoDB and S3 storage from section 1, using a clean connector labeled "Findings + evidence".
+Below the worker group show a dashed source box: "Evidence sources" containing "Security Hub CSPM", "AWS Config", and "AWS resource APIs". Mark Security Hub and Config specifically "Enabled separately". Connect workers to sources labeled "Read-only collection".
+A small arrow or note from Portal API to Scan workflow is labeled "Manual scan". Avoid suggesting scans require another AWS account or organization.
+
+SECTION 3, lower right or a full-width bottom band, title "3  Deploy with GitHub".
+Show external "GitHub Actions" with small repository text "abyandzakwan/northstar-governance-dashboard".
+Arrow labeled "OIDC • Temporary credentials" to "IAM • Plan / Deploy roles".
+Then show "Terraform plan → Review gate → Apply saved plan".
+Show a grouped foundation-storage box "S3 • Terraform state + release artifacts".
+Add a small deployment annotation "Publish frontend + Lambda release" and "CodeDeploy • API canary". Depicts delivery to the portal, not user request routing.
+Use dashed arrows for deployment/control paths, solid arrows for application/data paths.
+
+SHARED SERVICES STRIP, compact at bottom:
+"KMS • Encryption" | "CloudWatch → SNS • Logs, metrics, alerts" | "CloudTrail → S3 audit • Evidence access"
+Small final note: "One real AWS account • Remediation execution disabled • Logical service groups shown"
+
+Do not add EC2, NAT gateways, RDS, Kubernetes, Organizations, Control Tower, member accounts, a custom domain, an ALB, or any service not specified. Do not draw six AWS accounts. Do not imply Security Hub or Config is provisioned by this stack. Do not show remediation as enabled. All text must be correctly spelled, and the AWS account ID and Sydney region must be exact.
+
+FINAL EDIT PROMPT
+
+Edit this architecture diagram to correct layout clarity while preserving its polished white-and-blue AWS style, all exact service names, account 294056656040, Sydney region ap-southeast-2, three numbered sections, existing functionality, and typography.
+
+Make these precise changes:
+1. Remove the large physical outer AWS account boundary (the dark line beginning above section 1 near x=320, which incorrectly excludes regional services on the left). Remove the large dashed Sydney boundary enclosing only the right half of section 1. These two physical boundaries incorrectly place Cognito, API Gateway, Scheduler, and collection services outside the regional account. Do not redraw region/account boundary lines. Instead, use clear header text at the top: "AWS account 294056656040" and "Regional services: Sydney • ap-southeast-2". Add the small word "External" to the Browser/User label and GitHub Actions label. Keep the small dashed purple Global edge grouping around WAF and CloudFront with the exact note "WAF configuration: us-east-1"; this is the exception to the default Sydney region. Every other AWS service throughout sections 1, 2 and 3 is regional in the one account unless a global service is explicitly labeled.
+2. In section 2, change the lower right data group heading to "Same data stores as section 1". Keep the two DynamoDB and S3 illustrations as repeated references, but add a small subtitle "Shared storage • not additional resources". This makes it unambiguous that there is one DynamoDB table and one shared set of evidence/export/query buckets.
+3. In the section 2 event input chain, remove the extra unlabeled pink API Gateway icon between SQS/DLQ and the orange Event Lambda. The exact chain should have only: "AWS change events" → "EventBridge" → "SQS / DLQ" → "Event Lambda" → "Step Functions". No API Gateway belongs in this event chain.
+4. In section 3, change the Review gate subtitle from "(manual approval)" to "(if configured)".
+5. At the rightmost deployment node, use an AWS CodeDeploy-style icon appropriate to a deployment service, not a CloudFront globe, while retaining "CodeDeploy • API canary".
+
+Keep the three browser paths accurate: Browser → WAF/CloudFront → S3 frontend; Browser ↔ Cognito sign-in/JWT; Browser → API Gateway → Lambda API → data stores. CloudFront must not route API calls. Keep the Athena/Glue, read-only evidence sources, manual scan connector, deployment and shared-service strip intact. Keep full legibility and clean orthogonal arrows. Render the corrected entire diagram as the final image.
+
